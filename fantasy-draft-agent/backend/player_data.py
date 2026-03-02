@@ -266,6 +266,7 @@ async def load_players(
 ) -> List[Player]:
     """
     Fetch and merge all player data sources.  Results are cached in-process.
+    Falls back to built-in seed data when external APIs are unavailable.
     """
     global _PLAYER_CACHE
     if _PLAYER_CACHE and not force_refresh:
@@ -341,10 +342,17 @@ async def load_players(
     # Filter out players with no projections AND no ECR rank (pure noise)
     players = [p for p in players if p.projected_points > 0 or p.ecr_rank < 500]
 
+    # --- Fallback: use built-in seed data when external APIs returned nothing ---
+    if not players:
+        from seed_players import get_seed_players
+        players = get_seed_players()
+        print(f"[player_data] Using seed data fallback: {len(players)} players")
+    else:
+        print(f"[player_data] Total players loaded from APIs: {len(players)}")
+
     # Sort by ECR rank for initial ordering
     players.sort(key=lambda p: p.ecr_rank)
 
-    print(f"[player_data] Total players loaded: {len(players)}")
     _PLAYER_CACHE = players
     return players
 
